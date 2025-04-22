@@ -23,7 +23,7 @@ music_df, numeric_features, text_features, tfidf = create_song_features(music_df
 
 # ------------------ UI ------------------
 
-st.set_page_config(page_title="Smart Music Recommender", layout="wide")
+st.set_page_config(page_title="Musik Empfehlung:RhythMatch", layout="wide")
 
 # ----- Sidebar -----
 with st.sidebar:
