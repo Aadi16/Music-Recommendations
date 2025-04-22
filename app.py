@@ -23,7 +23,7 @@ music_df, numeric_features, text_features, tfidf = create_song_features(music_df
 
 # ------------------ UI ------------------
 
-st.set_page_config(page_title="Musik Empfehlung:RhythMatch", layout="wide")
+st.set_page_config(page_title="Smart Music Recommender", layout="wide")
 
 # ----- Sidebar -----
 with st.sidebar:
@@ -52,7 +52,7 @@ with st.sidebar:
         selected_user = st.selectbox("Select User", user_sample)
 
 # ----- Main Panel -----
-st.markdown("<h1 style='color:black;'>Smart Music Recommender</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='color:black;'>Musik Empfehlung:RhythMatch</h1>", unsafe_allow_html=True)
 
 if rec_type == "Content-based":
     filtered_df = music_df if selected_artist == "All" else music_df[music_df['artist'] == selected_artist]
