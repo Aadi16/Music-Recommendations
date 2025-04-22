@@ -1,74 +1,88 @@
 import streamlit as st
 import pandas as pd
 from recommender import create_song_features, recommend_songs
+from user_recommender import get_user_top_songs, recommend_songs_for_user
 
-# Load your music dataset
-music_df = pd.read_csv("music_df_cleaned.csv")  # Change path if needed
+# Load data
+music_df = pd.read_csv("music_df_cleaned.csv")
+user_history_df = pd.read_csv("User Listening History.csv")
 
-# Create features
+# Feature generation
 music_df, numeric_features, text_features, tfidf = create_song_features(music_df)
 
-# Streamlit UI
+# ------------------ UI ------------------
 
-# Customizing the sidebar
-st.sidebar.title("🎧 Filters & Settings")
+st.set_page_config(page_title="Smart Music Recommender", layout="wide")
 
-# --- Filter by artist (optional) ---
-with st.sidebar.expander("🎤 Filter by Artist"):
-    artist_list = sorted(music_df['artist'].dropna().unique())
-    selected_artist = st.sidebar.selectbox("Filter songs by artist:", ["All"] + artist_list)
+# ----- Sidebar -----
+with st.sidebar:
+    st.title("Settings")
 
-# --- Similarity weighting slider ---
-with st.sidebar.expander("⚖️ Similarity Preference: Audio vs. Genre/Tags"):
-    sim_weight = st.sidebar.slider(
-        "Adjust similarity preference",
+    rec_type = st.radio("Recommendation Type", ["Content-based", "User-based"])
+
+    # Define sim_weight globally for both modes
+    sim_weight = st.slider(
+        "Similarity Preference: Audio vs. Genre/Tags",
         min_value=0.0,
         max_value=1.0,
         value=0.5,
-        step=0.05,
-        help="0.0 = Only text (genre/tags), 1.0 = Only audio features"
+        step=0.05
     )
 
-# Main Panel
+    if rec_type == "Content-based":
+        artist_list = sorted(music_df['artist'].dropna().unique())
+        selected_artist = st.selectbox("Filter by Artist", ["All"] + artist_list)
 
-# Title and description
-st.title("🎧 Smart Music Recommender")
-st.markdown("Welcome to the Smart Music Recommender! 🎶 Select a song to get similar song recommendations based on audio features and genre/tags.")
+    else:  # User-based
+        user_history_df = user_history_df.dropna(subset=['user_id'])
+        user_history_df = user_history_df.drop_duplicates(subset=['user_id'])
 
-# --- Filtered song list ---
-if selected_artist != "All":
-    filtered_df = music_df[music_df['artist'] == selected_artist]
-else:
-    filtered_df = music_df
+        user_sample = user_history_df['user_id'].sample(20)
+        selected_user = st.selectbox("Select User", user_sample)
 
-song_list = filtered_df['name'].dropna().unique()
+# ----- Main Panel -----
+st.markdown("<h1 style='color:black;'>Smart Music Recommender</h1>", unsafe_allow_html=True)
 
-# Song search dropdown
-song_name = st.selectbox("🎵 Select a song to get recommendations:", options=sorted(song_list))
+if rec_type == "Content-based":
+    filtered_df = music_df if selected_artist == "All" else music_df[music_df['artist'] == selected_artist]
+    song_list = sorted(filtered_df['name'].dropna().unique())
 
-# Generate recommendations
-if song_name:
-    recs = recommend_songs(
-        song_name,
-        music_df,
-        numeric_features,
-        text_features,
-        tfidf,
-        weight=sim_weight  # 👈 added new param
-    )
+    song_name = st.selectbox("Select a song to get recommendations:", options=song_list)
 
-    # Display the recommendations
-    st.subheader("🎯 Recommended Songs:")
-    if recs and recs[0]["name"] == "Not Found":
-        st.warning("Song not found in the database.")
-    else:
+    if song_name:
+        recs = recommend_songs(song_name, music_df, numeric_features, text_features, tfidf, weight=sim_weight)
+
+        st.subheader("Recommended Songs")
         for rec in recs:
             st.markdown(f"**{rec['name']}** by *{rec['artist']}*")
-            st.markdown(f"_Reason: {rec['reason']}_")
-            
-            # Check if there's a URL for the audio preview
-            if rec.get("url"):  
-                st.audio(rec["url"])  # Display audio preview
-
+            st.caption(f"{rec['reason']}")
+            if rec['url']:
+                st.audio(rec['url'])
             st.markdown("---")
 
+else:  # User-based recommendation
+    if selected_user:
+        top_songs = get_user_top_songs(user_history_df, music_df, selected_user)
+        st.write(f"Top songs for user {selected_user}: {top_songs}")
+
+        missing_songs = [song for song in top_songs if song not in music_df['name'].values]
+        if missing_songs:
+            st.write(f"Missing songs in music database: {missing_songs}")
+
+        recs = recommend_songs_for_user(
+            user_top_songs=top_songs,
+            music_df=music_df,
+            numeric_features=numeric_features,
+            text_features=text_features,
+            tfidf=tfidf,
+            recommend_fn=recommend_songs,
+            weight=sim_weight  # Now it's always defined
+        )
+
+        st.subheader(f"Recommendations for User {selected_user}")
+        for rec in recs:
+            st.markdown(f"**{rec['name']}** by *{rec['artist']}*")
+            st.caption(f"{rec['reason']}")
+            if rec['url']:
+                st.audio(rec['url'])
+            st.markdown("---")
