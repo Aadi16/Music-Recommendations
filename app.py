@@ -1,11 +1,22 @@
 import streamlit as st
 import pandas as pd
+import gdown
+import os
 from recommender import create_song_features, recommend_songs
 from user_recommender import get_user_top_songs, recommend_songs_for_user
 
 # Load data
 music_df = pd.read_csv("music_df_cleaned.csv")
-user_history_df = pd.read_csv("User Listening History.csv")
+
+GOOGLE_DRIVE_FILE_ID = "147yuIpQ74JCCkErdq4KZncwUeBvmo5rt"
+user_history_file = "User Listening History.csv"
+
+if not os.path.exists(user_history_file):
+    url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}"
+    gdown.download(url, user_history_file, quiet=False)
+
+user_history_df = pd.read_csv(user_history_file)
+
 
 # Feature generation
 music_df, numeric_features, text_features, tfidf = create_song_features(music_df)
