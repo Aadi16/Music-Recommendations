@@ -11,10 +11,10 @@ def generate_reason(selected_song_row, recommended_song_row, numeric_sim, text_s
             feature_comparisons.append(f"{feature} ({recommended_value:.2f})")
 
     if numeric_sim > text_sim:
-        reason = f"🎚️ Audio Match — Similar {', '.join(feature_comparisons)}"
+        reason = f"Audio Match — Similar {', '.join(feature_comparisons)}"
     else:
         genre = recommended_song_row.get('genre', 'Unknown')
         tags = recommended_song_row.get('tags', 'None')
-        reason = f"🎵 Genre/Tag Match — Genre: {genre}, Tags: {tags}"
+        reason = f"Genre/Tag Match — Genre: {genre}, Tags: {tags}"
 
     return reason
