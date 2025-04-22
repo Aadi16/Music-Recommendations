@@ -28,51 +28,48 @@ def recommend_songs(song_name, music_df, numeric_features, text_features, tfidf,
     try:
         song_idx = music_df[music_df['name'] == song_name].index[0]
     except IndexError:
-        return [{"name": "Not Found", "artist": "Unknown", "reason": "Song not found in database.", "url": ""}]
+        return [{
+            "name": "Not Found",
+            "artist": "Unknown",
+            "reason": "Song not found in database.",
+            "url": ""
+        }]
 
-    # Extract features for the selected song
+    # Extract feature vectors
     song_numeric = numeric_features.iloc[song_idx]
-    song_text_raw = music_df.loc[song_idx, 'text_features']
-    song_text_vector = tfidf.transform([song_text_raw])
-
+    song_text = tfidf.transform([music_df.loc[song_idx, 'text_features']])
     song_genre = music_df.loc[song_idx, 'genre']
     song_tags = music_df.loc[song_idx, 'tags']
 
-    # Compute similarity
+    # Compute cosine similarity
     numeric_sim = cosine_similarity([song_numeric], numeric_features)[0]
-    text_sim = cosine_similarity(song_text_vector, text_features)[0]
+    text_sim = cosine_similarity(song_text, text_features)[0]
 
-    # Normalize both similarities
-    numeric_sim_norm = (numeric_sim - np.min(numeric_sim)) / (np.max(numeric_sim) - np.min(numeric_sim))
-    text_sim_norm = (text_sim - np.min(text_sim)) / (np.max(text_sim) - np.min(text_sim))
+    # Weighted combination
+    combined_sim = weight * numeric_sim + (1 - weight) * text_sim
 
-    # Combine based on weight
-    combined_sim = weight * numeric_sim_norm + (1 - weight) * text_sim_norm
-
-    # Sort by final score
-    top_indices = np.argsort(combined_sim)[::-1]
+    # Sort and get top results
+    top_indices = combined_sim.argsort()[::-1]
 
     recommendations = []
-
     for idx in top_indices:
         if idx == song_idx:
-            continue  # skip the selected song
+            continue
         if len(recommendations) >= 5:
             break
 
         row = music_df.iloc[idx]
 
-        # Generate reason
-        if weight >= 0.65:
-            reason = f"Matched on audio features"
-        elif weight <= 0.35:
+        # Determine reason based on which sim score is higher
+        if numeric_sim[idx] > text_sim[idx]:
+            reason = "Matched on audio features"
+        else:
             matched_genres = set(song_genre.split(',')).intersection(set(row['genre'].split(',')))
             matched_tags = set(song_tags.split(',')).intersection(set(row['tags'].split(',')))
+
             genre_reason = f"Genre: {', '.join(matched_genres)}" if matched_genres else ""
             tag_reason = f"Tags: {', '.join(matched_tags)}" if matched_tags else ""
             reason = f"Matched on genre/tags — {genre_reason} {tag_reason}".strip()
-        else:
-            reason = "Balanced match — blend of audio and genre/tags"
 
         recommendations.append({
             "name": row['name'],
