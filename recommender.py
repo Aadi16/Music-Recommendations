@@ -1,6 +1,9 @@
+# recommender.py
+
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
 
 def create_song_features(df):
     df = df.copy()
@@ -30,22 +33,18 @@ def recommend_songs(song_name, music_df, numeric_features, text_features, tfidf,
             "url": ""
         }]
 
-    # ✅ Fix: Convert to 2D array explicitly
     song_numeric_vector = numeric_features.iloc[song_idx].values.reshape(1, -1)
     song_text_vector = tfidf.transform([music_df.loc[song_idx, 'text_features']])
-
     song_genre = music_df.loc[song_idx, 'genre']
     song_tags = music_df.loc[song_idx, 'tags']
 
-    # Compute similarity scores properly
     numeric_sim = cosine_similarity(song_numeric_vector, numeric_features)[0]
     text_sim = cosine_similarity(song_text_vector, text_features)[0]
-
-    # ✅ Combine based on given weight
     combined_sim = weight * numeric_sim + (1 - weight) * text_sim
-    top_indices = combined_sim.argsort()[::-1]
 
+    top_indices = combined_sim.argsort()[::-1]
     recommendations = []
+
     for idx in top_indices:
         if idx == song_idx:
             continue
@@ -54,8 +53,7 @@ def recommend_songs(song_name, music_df, numeric_features, text_features, tfidf,
 
         row = music_df.iloc[idx]
 
-        # Determine match type based on actual similarity
-        reason = ""
+        # Match reason logic
         if numeric_sim[idx] > text_sim[idx]:
             reason = "Matched on audio features 🎚️"
         else:
